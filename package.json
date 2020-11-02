@@ -1,6 +1,23 @@
 {
   "name": "heroku-wrapper",
   "version": "1.0.0",
+  "description": "Shareable Cross-Origin Learning Resources",
+  "main": "index.ts",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/garyplard/heroku-wrapper.git"
+  },
+  "keywords": [
+    "heroku",
+    "node",
+    "typescript"
+  ],
+  "author": "Gary Plard",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/garyplard/heroku-wrapper/issues"
+  },
+  "homepage": "https://github.com/garyplard/heroku-wrapper",
   "devDependencies": {
     "typescript": "~3.9.7"
   },
