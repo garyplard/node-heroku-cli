@@ -1,11 +1,11 @@
 {
-  "name": "heroku-wrapper",
+  "name": "heroku-node-cli",
   "version": "1.0.0",
   "description": "Shareable Cross-Origin Learning Resources",
   "main": "index.ts",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/garyplard/heroku-wrapper.git"
+    "url": "git+https://github.com/garyplard/heroku-node-cli.git"
   },
   "keywords": [
     "heroku",
@@ -15,9 +15,9 @@
   "author": "Gary Plard",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/garyplard/heroku-wrapper/issues"
+    "url": "https://github.com/garyplard/heroku-node-cli/issues"
   },
-  "homepage": "https://github.com/garyplard/heroku-wrapper",
+  "homepage": "https://github.com/garyplard/heroku-node-cli",
   "devDependencies": {
     "typescript": "~3.9.7"
   },
