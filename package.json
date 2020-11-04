@@ -1,11 +1,11 @@
 {
   "name": "node-heroku-cli",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Node client for heroku",
   "main": "index.ts",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/garyplard/heroku-node-cli.git"
+    "url": "git+https://github.com/garyplard/node-heroku-cli.git"
   },
   "keywords": [
     "heroku",
@@ -15,9 +15,9 @@
   "author": "Gary Plard",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/garyplard/heroku-node-cli/issues"
+    "url": "https://github.com/garyplard/node-heroku-cli/issues"
   },
-  "homepage": "https://github.com/garyplard/heroku-node-cli",
+  "homepage": "https://github.com/garyplard/node-heroku-cli",
   "devDependencies": {
     "typescript": "~3.9.7"
   },
