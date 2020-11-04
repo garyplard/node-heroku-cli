@@ -1,7 +1,7 @@
 {
-  "name": "heroku-node-cli",
+  "name": "node-heroku-cli",
   "version": "1.0.0",
-  "description": "Shareable Cross-Origin Learning Resources",
+  "description": "Node client for heroku",
   "main": "index.ts",
   "repository": {
     "type": "git",
