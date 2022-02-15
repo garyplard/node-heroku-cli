@@ -1,4 +1,4 @@
 export interface Common {
-  id: string;
-  name: string;
+  id: string
+  name: string
 }

@@ -1,8 +1,14 @@
 {
   "name": "node-heroku-cli",
-  "version": "1.0.2",
+  "version": "2.0.0",
   "description": "Node client for heroku",
-  "main": "index.ts",
+  "main": "dist/index.js",
+  "scripts": {
+    "lint": "dolint() { yarn lint:es $@; }; dolint",
+    "lint:es": "eslint --ext .ts . src/** --fix",
+    "build": "tsc",
+    "publish": "yarn build && npm publish"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/garyplard/node-heroku-cli.git"
@@ -19,9 +25,20 @@
   },
   "homepage": "https://github.com/garyplard/node-heroku-cli",
   "devDependencies": {
-    "typescript": "~3.9.7"
+    "@typescript-eslint/eslint-plugin": "~5.12.0",
+    "@typescript-eslint/parser": "~5.12.0",
+    "eslint": "~8.9.0",
+    "eslint-config-prettier": "~8.3.0",
+    "eslint-plugin-import": "~2.25.4",
+    "eslint-plugin-json": "~3.1.0",
+    "eslint-plugin-prettier": "~4.0.0",
+    "prettier": "~2.5.1",
+    "typescript": "~4.5.5"
   },
   "chpm": [
     "yarn"
+  ],
+  "files": [
+    "dist/*"
   ]
 }
