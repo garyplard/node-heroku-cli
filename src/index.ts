@@ -1,4 +1,4 @@
-import { App, Coupling, CouplingStage, Domain, Pipeline } from './models'
+import { App, Coupling, CouplingStage, Domain, Dyno, Pipeline } from './models'
 
 type withPartialApp = { app: Partial<App> }
 type withEnvVars = { envVars: Record<string, RegExp> }
@@ -214,8 +214,18 @@ export class Heroku {
     ).ok
   }
 
-  async getAppDynos(props: { appName: string }): Promise<App[]> {
+  async getAppDynos(props: { appName: string }): Promise<Dyno[]> {
     const { appName } = props
     return await (await this._fetch({ route: `/apps/${appName}/dynos` })).json()
+  }
+
+  async restartAppDynos(props: {
+    appName: string
+    dynoName?: string
+  }): Promise<boolean> {
+    const { appName, dynoName } = props
+    let route = `/apps/${appName}/dynos`
+    if (dynoName) route += `/${dynoName}`
+    return (await this._fetch({ route, method: 'DELETE' })).ok
   }
 }

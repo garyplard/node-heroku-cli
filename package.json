@@ -1,13 +1,14 @@
 {
   "name": "node-heroku-cli",
-  "version": "2.0.0",
+  "version": "2.1.2",
   "description": "Node client for heroku",
   "main": "dist/index.js",
   "scripts": {
     "lint": "dolint() { yarn lint:es $@; }; dolint",
     "lint:es": "eslint --ext .ts . src/** --fix",
     "build": "tsc",
-    "publish": "yarn build && npm publish"
+    "prepublish": "yarn build",
+    "publish": "npm publish"
   },
   "repository": {
     "type": "git",
