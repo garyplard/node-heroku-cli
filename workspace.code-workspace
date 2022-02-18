@@ -1,0 +1,38 @@
+{
+  "folders": [
+    {
+      "name": "[SRC]",
+      "path": "./src"
+    },
+    {
+      "name": "[Root]",
+      "path": "."
+    }
+  ],
+  "settings": {
+    "files.exclude": {
+      "**/.git": true,
+      "**/.svn": true,
+      "**/.hg": true,
+      "**/CVS": true,
+      "**/.DS_Store": true
+    },
+    "editor.codeActionsOnSave": {
+      "source.fixAll.eslint": true
+    },
+    "eslint.packageManager": "yarn",
+    "eslint.alwaysShowStatus": true,
+    "eslint.codeActionsOnSave.mode": "problems",
+    "eslint.probe": [
+      "javascript",
+      "javascriptreact",
+      "typescript",
+      "typescriptreact",
+      "html",
+      "markdown"
+    ],
+    "eslint.format.enable": true,
+    "eslint.lintTask.enable": true,
+    "typescript.tsdk": "[Root]/node_modules/typescript/lib"
+  }
+}
