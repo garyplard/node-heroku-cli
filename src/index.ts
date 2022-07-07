@@ -137,7 +137,7 @@ export class Heroku {
     hostname: string;
     sni_endpoint?: string;
   }): Promise<Domain> {
-    const { appName, hostname, sni_endpoint } = props;
+    const { appName, hostname, sni_endpoint = null } = props;
     return await (
       await this._fetch({
         route: `/apps/${appName}/domains`,
