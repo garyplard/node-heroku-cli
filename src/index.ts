@@ -1,21 +1,26 @@
 import { App, Coupling, CouplingStage, Domain, Dyno, Pipeline } from './models'
+import fetch, { Response, RequestInfo, RequestInit, Headers } from 'node-fetch'
 
 type withPartialApp = { app: Partial<App> }
 type withEnvVars = { envVars: Record<string, RegExp> }
+type Result<T> = Promise<{ data: T; headers: Headers }>
+
+interface FetchProps {
+  route: RequestInfo
+  method?: RequestInit['method']
+  body?: RequestInit['body']
+}
 
 export class Heroku {
-  private _apiKey: string
+  private apiKey
 
   constructor(apiKey: string) {
-    this._apiKey = apiKey
+    this.apiKey = apiKey
   }
 
-  private async _fetch(props: {
-    route: string
-    method?: RequestInit['method']
-    body?: RequestInit['body']
-  }): Promise<Response> {
+  private async _fetch(props: FetchProps): Promise<Response> {
     const { route, method = 'GET', body } = props
+
     return fetch(`https://api.heroku.com${route}`, {
       method,
       body,
@@ -24,50 +29,78 @@ export class Heroku {
           'Content-Type': 'application/json',
         }),
         Accept: 'application/vnd.heroku+json; version=3',
-        Authorization: `Bearer ${this._apiKey}`,
+        Authorization: `Bearer ${this.apiKey}`,
       },
     })
   }
 
-  async getApps(): Promise<App[]> {
-    return await (await this._fetch({ route: '/apps' })).json()
+  private async fetchJson<T>(props: FetchProps): Result<T> {
+    const response = await this._fetch(props)
+    return {
+      headers: response.headers,
+      data: (await response.json()) as T,
+    }
   }
 
-  async getApp(props: { appName: string }): Promise<App> {
+  private async fetchBool(props: FetchProps): Result<boolean> {
+    const response = await this._fetch(props)
+    return {
+      headers: response.headers,
+      data: response.ok,
+    }
+  }
+
+  async getApps(): Result<App[]> {
+    return this.fetchJson<App[]>({ route: '/apps' })
+  }
+
+  async getApp(props: { appName: string }): Result<App | undefined> {
     const { appName } = props
-    const doc = await (await this._fetch({ route: `/apps/${appName}` })).json()
-    return doc.id === 'not_found' ? undefined : doc
+    const { data, headers } = await this.fetchJson<App>({
+      route: `/apps/${appName}`,
+    })
+    return { headers, data: data.id === 'not_found' ? undefined : data }
   }
 
   async getPipelineApps(props: {
     pipelineName: string
     stage?: CouplingStage
-  }): Promise<App[]> {
+  }): Result<App[]> {
     const { pipelineName, stage } = props
-    const pipeline = await this._getPipeline({ pipelineName })
-    const couplings: Coupling[] = await (
-      await this._fetch({
-        route: `/pipelines/${pipeline.id}/pipeline-couplings`,
-      })
-    ).json()
+    const { data: pipeline, headers } = await this.getPipeline({ pipelineName })
+    if (!pipeline) return { data: [], headers }
+    const { data: couplings } = await this.fetchJson<Coupling[]>({
+      route: `/pipelines/${pipeline.id}/pipeline-couplings`,
+    })
     const promises = couplings.reduce((acc, coupling) => {
       if (!stage || coupling.stage === stage) {
         acc.push(this.getApp({ appName: coupling.app.id }))
       }
       return acc
-    }, [] as Promise<App>[])
-    return await Promise.all(promises)
+    }, [] as Result<App | undefined>[])
+    return (await Promise.all(promises)).reduce(
+      (acc, { data, headers }) => ({
+        headers,
+        data: data ? [...acc.data, data] : acc.data,
+      }),
+      { data: [] as App[], headers: new Headers() }
+    )
   }
 
   async searchApps(props: {
     filters: withPartialApp | withEnvVars | (withPartialApp & withEnvVars)
     pipelineName?: string
-  }): Promise<App[]> {
+  }): Result<App[]> {
     const { filters, pipelineName } = props
-    const apps = await (pipelineName
-      ? this.getPipelineApps({ pipelineName, stage: CouplingStage.Production })
+    const response = await (pipelineName
+      ? this.getPipelineApps({
+          pipelineName,
+          stage: CouplingStage.Production,
+        })
       : this.getApps())
 
+    const { data: apps } = response
+    let { headers } = response
     const partialAppEntries =
       'app' in filters ? Object.entries(filters.app) : []
     const envVarsEntries =
@@ -86,7 +119,11 @@ export class Heroku {
       }
 
       if (envVarsEntries.length) {
-        const appEnvVars = await this.getAppEnvVars({ appName: app.name })
+        const response = await this.getAppEnvVars({
+          appName: app.name,
+        })
+        const { data: appEnvVars } = response
+        ;({ headers } = response)
         if (
           !envVarsEntries.every(([key, value]) => value.test(appEnvVars[key]))
         ) {
@@ -97,135 +134,128 @@ export class Heroku {
       filteredApps.push(app)
     }
 
-    return filteredApps
+    return { data: filteredApps, headers }
   }
 
   async updateAppBuildpacks(props: {
     appName: string
     buildpacks: string[]
-  }): Promise<boolean> {
+  }): Result<boolean> {
     const { appName, buildpacks } = props
-    return (
-      await this._fetch({
-        route: `/apps/${appName}/buildpack-installations`,
-        method: 'PUT',
-        body: JSON.stringify({
-          updates: buildpacks.map((buildpack) => ({ buildpack })),
-        }),
-      })
-    ).ok
+    return this.fetchBool({
+      route: `/apps/${appName}/buildpack-installations`,
+      method: 'PUT',
+      body: JSON.stringify({
+        updates: buildpacks.map((buildpack) => ({ buildpack })),
+      }),
+    })
   }
 
   async createApp(props: {
     appName: string
     region?: string
     team?: string
-  }): Promise<App> {
+  }): Result<App> {
     const { appName: name, region, team } = props
     if (team) {
-      return await (
-        await this._fetch({
-          route: '/teams/apps',
-          method: 'POST',
-          body: JSON.stringify({ name, region, team }),
-        })
-      ).json()
-    }
-    return await (
-      await this._fetch({
-        route: '/apps',
+      return this.fetchJson<App>({
+        route: '/teams/apps',
         method: 'POST',
-        body: JSON.stringify({ name, region }),
+        body: JSON.stringify({ name, region, team }),
       })
-    ).json()
+    }
+    return this.fetchJson<App>({
+      route: '/apps',
+      method: 'POST',
+      body: JSON.stringify({ name, region }),
+    })
   }
 
-  private async _getPipeline(props: {
+  private async getPipeline(props: {
     pipelineName: string
-  }): Promise<Pipeline> {
+  }): Result<Pipeline | undefined> {
     const { pipelineName } = props
-    const doc = await (
-      await this._fetch({ route: `/pipelines/${pipelineName}` })
-    ).json()
-    return doc.id === 'not_found' ? undefined : doc
+    const { data, headers } = await this.fetchJson<Pipeline>({
+      route: `/pipelines/${pipelineName}`,
+    })
+    return { headers, data: data.id === 'not_found' ? undefined : data }
   }
 
   async addAppToPipeline(props: {
     appName: string
     pipelineName: string
     stage: 'test' | 'review' | 'development' | 'staging' | 'production'
-  }): Promise<boolean> {
+  }): Result<boolean> {
     const { appName: app, pipelineName, stage } = props
-    const pipeline = await this._getPipeline({ pipelineName })
+    const { data: pipeline, headers } = await this.getPipeline({ pipelineName })
     if (pipeline) {
-      return (
-        await this._fetch({
-          route: '/pipeline-couplings',
-          method: 'POST',
-          body: JSON.stringify({ app, pipeline: pipeline.id, stage }),
-        })
-      ).ok
+      return this.fetchBool({
+        route: '/pipeline-couplings',
+        method: 'POST',
+        body: JSON.stringify({ app, pipeline: pipeline.id, stage }),
+      })
     }
-    return false
+    return { data: false, headers }
   }
 
   async getAppEnvVars(props: {
     appName: string
-  }): Promise<Record<string, string>> {
+  }): Result<Record<string, string>> {
     const { appName } = props
-    return await (
-      await this._fetch({ route: `/apps/${appName}/config-vars` })
-    ).json()
+    return this.fetchJson<Record<string, string>>({
+      route: `/apps/${appName}/config-vars`,
+    })
   }
 
   async updateAppEnvVars(props: {
     appName: string
     envVars: Record<string, string>
-  }): Promise<boolean> {
+  }): Result<boolean> {
     const { appName, envVars } = props
-    return (
-      await this._fetch({
-        route: `/apps/${appName}/config-vars`,
-        method: 'PATCH',
-        body: JSON.stringify(envVars),
-      })
-    ).ok
+    return this.fetchBool({
+      route: `/apps/${appName}/config-vars`,
+      method: 'PATCH',
+      body: JSON.stringify(envVars),
+    })
   }
 
   async addAppDomain(props: {
     appName: string
     hostname: string
     sni_endpoint?: string
-  }): Promise<Domain> {
+  }): Result<Domain> {
     const { appName, hostname, sni_endpoint } = props
-    return await (
-      await this._fetch({
-        route: `/apps/${appName}/domains`,
-        method: 'POST',
-        body: JSON.stringify({ hostname, sni_endpoint }),
-      })
-    ).json()
+    return this.fetchJson({
+      route: `/apps/${appName}/domains`,
+      method: 'POST',
+      body: JSON.stringify({ hostname, sni_endpoint }),
+    })
   }
 
-  async enableAppAutoCerts(props: { appName: string }): Promise<boolean> {
+  async getAppDomains(props: { appName: string }): Result<Domain[]> {
     const { appName } = props
-    return (
-      await this._fetch({ route: `/apps/${appName}/acm`, method: 'POST' })
-    ).ok
+    return this.fetchJson({ route: `/apps/${appName}/domains` })
   }
 
-  async getAppDynos(props: { appName: string }): Promise<Dyno[]> {
+  async enableAppAutoCerts(props: { appName: string }): Result<boolean> {
     const { appName } = props
-    return await (await this._fetch({ route: `/apps/${appName}/dynos` })).json()
+    return this.fetchBool({ route: `/apps/${appName}/acm`, method: 'POST' })
+  }
+
+  async getAppDynos(props: { appName: string }): Result<Dyno[]> {
+    const { appName } = props
+    return this.fetchJson({ route: `/apps/${appName}/dynos` })
   }
 
   async restartAppDynos(props: {
     appName: string
     dynoName?: string
-  }): Promise<boolean> {
+  }): Result<boolean> {
     const { appName, dynoName } = props
     let route = `/apps/${appName}/dynos`
     if (dynoName) route += `/${dynoName}`
-    return (await this._fetch({ route, method: 'DELETE' })).ok
+    return this.fetchBool({ route, method: 'DELETE' })
   }
 }
+
+export * from './models'
