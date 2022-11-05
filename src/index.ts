@@ -69,22 +69,25 @@ export class Heroku {
     const { pipelineName, stage } = props
     const { data: pipeline, headers } = await this.getPipeline({ pipelineName })
     if (!pipeline) return { data: [], headers }
-    const { data: couplings } = await this.fetchJson<Coupling[]>({
-      route: `/pipelines/${pipeline.id}/pipeline-couplings`,
-    })
-    const promises = couplings.reduce((acc, coupling) => {
-      if (!stage || coupling.stage === stage) {
-        acc.push(this.getApp({ appName: coupling.app.id }))
-      }
-      return acc
-    }, [] as Result<App | undefined>[])
-    return (await Promise.all(promises)).reduce(
-      (acc, { data, headers }) => ({
-        headers,
-        data: data ? [...acc.data, data] : acc.data,
-      }),
-      { data: [] as App[], headers: new Headers() }
-    )
+
+    const [{ data: couplings }, { data: apps, headers: lastHeaders }] =
+      await Promise.all([
+        this.fetchJson<Coupling[]>({
+          route: `/pipelines/${pipeline.id}/pipeline-couplings`,
+        }),
+        this.getApps(),
+      ])
+
+    return {
+      data: couplings.reduce((acc, coupling) => {
+        if (!stage || coupling.stage === stage) {
+          const match = apps.find(({ id }) => id === coupling.app.id)
+          if (match) acc.push(match)
+        }
+        return acc
+      }, [] as App[]),
+      headers: lastHeaders,
+    }
   }
 
   async searchApps(props: {

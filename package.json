@@ -1,6 +1,6 @@
 {
   "name": "node-heroku-cli",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "Node client for heroku",
   "main": "dist/index.js",
   "scripts": {
